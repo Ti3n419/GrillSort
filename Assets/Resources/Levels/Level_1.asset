@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ef6b38839064474d87ec55bd5d80b01, type: 3}
   m_Name: Level_1
   m_EditorClassIdentifier: 
-  levelTime: 180
+  levelTime: 300
   allFoodSets: 22
   totalFoodTypes: 15
   normalGrillCount: 9

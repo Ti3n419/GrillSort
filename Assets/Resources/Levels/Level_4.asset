@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Level_4
   m_EditorClassIdentifier: 
   levelTime: 300
-  allFoodSets: 30
-  totalFoodTypes: 20
-  normalGrillCount: 10
-  lockedGrillCount: 1
+  allFoodSets: 27
+  totalFoodTypes: 17
+  normalGrillCount: 9
+  lockedGrillCount: 2
   lockedBoosterCount: 3
