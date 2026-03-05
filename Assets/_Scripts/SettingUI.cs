@@ -52,7 +52,7 @@ public class SettingsUI : MonoBehaviour
         PlayerPrefs.SetInt("VibrateOn", _isVibrateOn ? 1 : 0);
         PlayerPrefs.Save();
         
-        if (_isVibrateOn) Handheld.Vibrate(); 
+        //if (_isVibrateOn) Handheld.Vibrate(); 
         
         UpdateUI();
     }

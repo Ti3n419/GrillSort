@@ -5,8 +5,6 @@ using UnityEngine;
 using DG.Tweening;
 using UnityEngine.UI;
 using TMPro;
-using Unity.VisualScripting;
-
 public class GameManager : MonoBehaviour
 {
     // [THÊM STRUCT NÀY VÀO CUỐI FILE GAMEMANAGER HOẶC BÊN TRONG CLASS GAMEMANAGER ĐỀU ĐƯỢC]
@@ -25,16 +23,11 @@ public class GameManager : MonoBehaviour
     }
     private static GameManager instance;
     public static GameManager Instance => instance;
-    // CẤU HÌNH THỜI GIAN (TIME OVER)
-    [Header("Time Config")]
-    private float _levelTime = 240f;
-    [SerializeField] private Image _timerFillImage;
-    [SerializeField] private TextMeshProUGUI _timeText;
-    private float _currentTime;
+    [Header("Managers")]
+    [SerializeField] private TimeManager timeManager;
+    [SerializeField] private ComboManager comboManager;
+    private float _timeFormData;
     private bool _isGameOver = false;
-    private bool _isTimerRunning = false;
-    private int _lastSeconds = -1;// Biến tối ưu hóa, chống cập nhật Text vô tội vạ
-    private bool _isTimeWarningActive = false;
     [Header("Level Data")]
     private LevelData currentLevelData; // Kéo file Level_1.asset của bạn vào đây
     private int _currentLevelIndex = 1; // Biến nhớ xem đang ở màn mấy
@@ -58,7 +51,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Transform _btnTimeFreezeStartPos; // Vị trí xuất phát (Cái nút)
     [SerializeField] private Transform _centerScreenPos; // vi tri giua man hinh
     [SerializeField] private ParticleSystem _timeFreezeParticles; // Hiệu ứng nổ hạt băng
-    private bool _isTimeFrozen = false; // Cờ đánh dấu thời gian đang bị đóng băng
+    //private bool _isTimeFrozen = false; // Cờ đánh dấu thời gian đang bị đóng băng
     // KHAI BÁO BIẾN CHO BOOSTER NAM CHÂM
     [Header("Magnet Booster Config")]
     [SerializeField] private Image _magnetIcon;// Ảnh hình cái Nam Châm
@@ -75,19 +68,6 @@ public class GameManager : MonoBehaviour
     [SerializeField] private List<Image> _smokeDummies;  // Kho chứa khoảng 3-4 cái ảnh Dummy để diễn hoạt khói
     private bool _isBoosterRunning = false;// Khóa an toàn chống bấm liên tục khi Booster đang diễn anim
     public bool IsBoosterRunning => _isBoosterRunning;
-    // CẤU HÌNH COMBO SYSTEM
-    [Header("Combo Config")]
-    [SerializeField] private GameObject _comboUIParent; // Object cha chứa toàn bộ UI Combo
-    [SerializeField] private Image _comboFillImage;// Thanh Slider tụt dần
-    [SerializeField] private TextMeshProUGUI _comboText;// Text hiển thị "Combo x1, x2..."
-    private int _currentCombo = 0;
-    private float _comboTimeLeft = 0f;
-    private float _currentMaxComboTime = 0f;
-    // Mảng thời gian tương ứng với từng cấp độ Combo (Index 0 bỏ trống)
-    // Cấp 1: 10s | Cấp 2: 8s | Cấp 3: 6s | Cấp 4: 4s | Cấp 5: 3s
-    private float[] _comboDurationLimits = new float[] { 0f, 10f, 8f, 6f, 4f, 3f };
-    private bool _isComboWarningActive = false; // Cờ đánh dấu đang nháy đỏ
-    private Color _originalComboColor = Color.white; // Ghi nhớ màu gốc của thanh Combo
     // CẤU HÌNH PROGRESS UI (TIẾN ĐỘ LEVEL)
     [Header("Progress Config")]
     [SerializeField] private TextMeshProUGUI _progressText;
@@ -105,7 +85,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private List<BoosterUI> _allBoosters; // Danh sách quản lý tất cả 4 Booster
     private int _lockedBoosterCount; // Biến nhận data từ LevelData
 
-    private int _maxComboAchieved = 0;// Kỷ lục combo cao nhất đạt được trong màn chơi
+    //private int _maxComboAchieved = 0;// Kỷ lục combo cao nhất đạt được trong màn chơi
     private int _totalMatchTarget;
     [Header("Level Info UI")]
     [SerializeField] private TextMeshProUGUI _levelLabelText; // Kéo Text "LEVEL 1" của bạn vào đây
@@ -136,9 +116,6 @@ public class GameManager : MonoBehaviour
             // Tự động gắn CanvasGroup nếu bạn quên
             if (smoke.GetComponent<CanvasGroup>() == null) smoke.gameObject.AddComponent<CanvasGroup>();
         }
-        // [COMBO]: Ghi nhớ màu gốc và ẩn UI Combo lúc mới vào game
-        if (_comboFillImage != null) _originalComboColor = _comboFillImage.color;
-        if (_comboUIParent != null) _comboUIParent.SetActive(false);
         // 1. Đọc bộ nhớ máy xem người chơi đang ở level mấy (Mặc định tải game lần đầu là level 1)
         _currentLevelIndex = PlayerPrefs.GetInt("CurrentSaveLevel", 1);
 
@@ -156,7 +133,8 @@ public class GameManager : MonoBehaviour
         // ĐỔ DỮ LIỆU TỪ SCRIPTABLE OBJECT VÀO GAME
         if (currentLevelData != null)
         {
-            _levelTime = currentLevelData.levelTime;
+            //_levelTime = currentLevelData.levelTime;
+            _timeFormData = currentLevelData.levelTime;
             _allFood = currentLevelData.allFoodSets;
             _totalFood = currentLevelData.totalFoodTypes;
 
@@ -183,8 +161,8 @@ public class GameManager : MonoBehaviour
         // [THÊM MỚI]: Bắt đầu vòng lặp tạo khói vô tận khi game bắt đầu
         StartCoroutine(IESpawnSmokeRoutine());
         // --- KHỞI ĐỘNG TIMER ---
-        _currentTime = _levelTime;
-        _isTimerRunning = true;
+        // Ra lệnh cho quản lý thời gian làm việc
+        timeManager.InitTime(_timeFormData);
         // [THÊM MỚI]: KHỞI TẠO TIẾN ĐỘ
         _totalMatchTarget = _allFood;
         UpdateProgressUI();// Vẽ UI lần đầu tiên thành "0/10"
@@ -192,71 +170,8 @@ public class GameManager : MonoBehaviour
     }
     private void Update()
     {
-        if (!_isTimerRunning || _isGameOver) return;
-
+        if (_isGameOver) return;
         if (_isBoosterRunning) return;
-
-        // ĐẾM NGƯỢC THỜI GIAN COMBO
-        if (_currentCombo > 0)
-        {
-            _comboTimeLeft -= Time.deltaTime;
-            // Nếu thời gian Combo chỉ còn <= 20% (Tức là đã trôi qua 8/10)
-            if (_comboTimeLeft <= (_currentMaxComboTime * 0.3) && !_isComboWarningActive)
-            {
-                _isComboWarningActive = true; // Bật cờ để không gọi lại liên tục
-                TriggerComboWarningVFX();
-            }
-            if (_comboTimeLeft <= 0)
-            {
-                BreakCombo(); // Hết giờ -> Đứt chuỗi
-            }
-            else
-            {
-                UpdateComboUI(); // Đang còn giờ -> Cập nhật thanh chạy
-            }
-        }
-        if (!_isTimeFrozen)
-        {
-            _currentTime -= Time.deltaTime;
-
-            // 4. Kiểm tra mốc BÁO ĐỘNG ĐỎ (Còn lại <= 10% thời gian)
-            // Ví dụ: 240s * 0.1 = 24 giây cuối cùng
-            if (_currentTime <= (_levelTime * 0.15) && !_isTimeWarningActive)
-            {
-                _isTimeWarningActive = true;
-                TriggerWarningActiveVFX();
-            }
-        }
-        if (_currentTime <= 0)
-        {
-            _currentTime = 0;
-            OnTimeOver();
-        }
-        UpdateTimerUI();
-    }
-    // HỆ THỐNG GIAO DIỆN & HIỆU ỨNG TIMER
-    private void UpdateTimerUI()
-    {
-        // 1. Cập nhật thanh Slider tụt dần
-        if (_timerFillImage != null)
-        {
-            _timerFillImage.fillAmount = _currentTime / _levelTime;
-        }
-        // 2. Cập nhật Text Phút:Giây (Tối ưu hóa: Chỉ cập nhật khi số giây thay đổi)
-        if (_timeText != null)
-        {
-            int currentSecondsInt = Mathf.CeilToInt(_currentTime);
-            if (currentSecondsInt != _lastSeconds)
-            {
-                _lastSeconds = currentSecondsInt;
-
-                int minutes = currentSecondsInt / 60;
-                int seconds = currentSecondsInt % 60;
-
-                // Ép định dạng 00:00
-                _timeText.text = string.Format("{0:00} : {1:00}", minutes, seconds);
-            }
-        }
     }
     private void SetupLockedBoosters()
     {
@@ -293,119 +208,14 @@ public class GameManager : MonoBehaviour
                 targetToLock.lockImage.SetActive(true);
         }
     }
-    private void TriggerWarningActiveVFX()
-    {
-        SoundManager.Instance.PlaySFX(SoundType.TimeLeft);
-        // Hiệu ứng thanh Slider: Đổi màu Đỏ và nhấp nháy liên tục (Yoyo)
-        if (_timerFillImage != null)
-        {
-            _timerFillImage.color = Color.red;
-            _timerFillImage.DOFade(0.3f, 0.25f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
-        }
-    }
-    private void OnTimeOver()
+    public void OnLevelFailed_TimeOut()
     {
         _isGameOver = true;
-        _isTimerRunning = false;
-
-        // CỰC KỲ QUAN TRỌNG: Ngắt cầu dao hiệu ứng nhấp nháy DOTween để không bị lỗi rò rỉ bộ nhớ
-        if (_timerFillImage != null) _timerFillImage.DOKill();
-        if (_timeText != null) _timeText.transform.DOKill();
-
+        timeManager.CleanUp();
         Debug.Log("⏰ TIME OVER! HẾT GIỜ RỒI!");
-
         // TODO: Gọi hàm hiển thị màn hình Thua Cuộc (Lose Panel) ở đây
+        comboManager.BreakCombo();
         StartCoroutine(IEShowLosePanelSequence());
-        // Ví dụ: UIManager.Instance.ShowLosePanel();
-    }
-    // ==========================================
-    // HỆ THỐNG LOGIC & HIỆU ỨNG COMBO
-    // ==========================================
-    private void IncreaseCombo()
-    {
-        // 1. DỌN DẸP HIỆU ỨNG (Rất quan trọng để không bị kẹt màu đỏ)
-        if (_comboFillImage != null)
-        {
-            _comboFillImage.DOKill();// Tiêu diệt Tween nhấp nháy đỏ cũ
-            // Trả lại màu gốc và ép Alpha (độ mờ) về 1
-            Color resetColor = _originalComboColor;
-            resetColor.a = 1f;
-            _comboFillImage.color = resetColor;
-        }
-        _isComboWarningActive = false; // Tắt cờ báo động
-        // 2. TĂNG COMBO (Khóa kịch trần ở mốc 5)
-        if (_currentCombo < 5)
-        {
-            _currentCombo++;
-        }
-        switch(_currentCombo)
-        {
-            case 1 : SoundManager.Instance.PlaySFX(SoundType.Combo1); break;
-            case 2 : SoundManager.Instance.PlaySFX(SoundType.Combo2); break;
-            case 3 : SoundManager.Instance.PlaySFX(SoundType.Combo3); break;
-            case 4 : SoundManager.Instance.PlaySFX(SoundType.Combo4); break;
-            case 5 : SoundManager.Instance.PlaySFX(SoundType.ComboMax); break;
-        }
-        // [ĐÂY CHÍNH LÀ ĐOẠN BẠN BỊ THIẾU]: CẬP NHẬT KỶ LỤC COMBO
-        // ========================================================
-        if (_currentCombo > _maxComboAchieved)
-        {
-            _maxComboAchieved = _currentCombo;
-        }
-        // 3. SẠC Lai THỜI GIAN combo
-        _comboTimeLeft = _comboDurationLimits[_currentCombo];
-        _currentMaxComboTime = _comboTimeLeft;
-        // 4. BẬT GIAO DIỆN & DIỄN HOẠT TEXT
-        if (_comboUIParent != null) _comboUIParent.SetActive(true);
-        if (_comboText != null)
-        {
-            _comboText.text = "Combo X" + _currentCombo;
-
-            // Ép dừng hiệu ứng nảy cũ (nếu ăn quá nhanh) và đập thình thịch
-            _comboText.transform.DOKill();
-            _comboText.transform.localScale = Vector3.one;
-            _comboText.transform.DOPunchScale(Vector3.one * 0.5f, 0.3f, 5, 1);
-        }
-        // Gọi UI vẽ lại thanh Fill ngay lập tức
-        UpdateComboUI();
-    }
-    private void BreakCombo()
-    {
-        // 1. DỌN DẸP HIỆU ỨNG AN TOÀN
-        if (_comboFillImage != null)
-        {
-            _comboFillImage.DOKill();
-            Color resetColor = _originalComboColor;
-            resetColor.a = 1f;
-            _comboFillImage.color = resetColor;
-        }
-        _isComboWarningActive = false;
-
-        // 2. RESET CHỈ SỐ
-        _currentCombo = 0;
-        _comboTimeLeft = 0f;
-
-        // 3. TẮT GIAO DIỆN
-        if (_comboUIParent != null) _comboUIParent.SetActive(false);
-
-        Debug.Log("💔 Đứt Combo!");
-    }
-    private void UpdateComboUI()
-    {
-        // Tụt thanh Slider mượt mà
-        if (_comboFillImage != null)
-        {
-            _comboFillImage.fillAmount = _comboTimeLeft / _currentMaxComboTime;
-        }
-    }
-    private void TriggerComboWarningVFX()
-    {
-        // Đổi màu thanh Fill sang Đỏ và làm hiệu ứng nhấp nháy Yoyo liên tục
-        if (_comboFillImage != null)
-        {
-            _comboFillImage.color = Color.red;
-            _comboFillImage.DOFade(0.3f, 0.2f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
-        }
     }
     public void OnClickNextLevel()
     {
@@ -458,7 +268,7 @@ public class GameManager : MonoBehaviour
     {
         SoundManager.Instance.PlaySFX(SoundType.ClickButton); // Thêm sound
         // Khóa không cho bấm khi đang chạy anim hoặc khi đang đóng băng rồi
-        if (IsBoosterRunning || _isTimeFrozen || DropDragCtrl.IsMouseBusy || IsAnyGrillBusy()) return;
+        if (IsBoosterRunning || timeManager.IsTimeFrozen || DropDragCtrl.IsMouseBusy || IsAnyGrillBusy()) return;
         StartCoroutine(IETimeFreezeSequence());
     }
     public void OnClickShuffleBooster()
@@ -721,7 +531,7 @@ public class GameManager : MonoBehaviour
             _isBoosterRunning = false;
             yield break;
         }
-        if(_shuffleBtn != null)
+        if (_shuffleBtn != null)
         {
             _shuffleBtn.interactable = false;
         }
@@ -850,7 +660,7 @@ public class GameManager : MonoBehaviour
             _isBoosterRunning = false;
             yield break; // Ngắt kịch bản
         }
-        if(_addBtn != null)
+        if (_addBtn != null)
         {
             _addBtn.interactable = false;
         }
@@ -917,17 +727,9 @@ public class GameManager : MonoBehaviour
     }
     private IEnumerator IEStartFreezeTimer(float duration)
     {
-        _isTimeFrozen = true;
-        // POLISH
-        Color originalTimeColor = _timerFillImage.color;// luu lai mau dang co cua fill der het timefrozen con set lai mau dang co truoc do cua fill
-        _timerFillImage.DOKill();
-        _timerFillImage.color = Color.cyan;
+        timeManager.FreezeTime(true);
         yield return new WaitForSeconds(duration);
-        _isTimeFrozen = false;
-        if (_timerFillImage != null)
-        {
-            _timerFillImage.color = originalTimeColor;
-        }
+        timeManager.FreezeTime(false);
     }
     // VÒNG LẶP SINH KHÓI BẾP
     // ==========================================
@@ -1267,7 +1069,7 @@ public class GameManager : MonoBehaviour
     {
         --_allFood;
 
-        this.IncreaseCombo();
+        comboManager.IncreaseCombo();
         this.UpdateProgressUI();
         // PHÁT LOA: Yêu cầu các bếp kiểm tra xem có đúng chìa khóa mở nắp không
         foreach (var grill in _listGrill)
@@ -1281,8 +1083,9 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log("Level Complete");
             _isGameOver = true;
-            _isTimerRunning = false;
-            BreakCombo();
+            timeManager.StopTimer();
+            timeManager.CleanUp();
+            comboManager.BreakCombo();
             StartCoroutine(IEShowWinPanelSequence());
         }
     }
@@ -1358,13 +1161,13 @@ public class GameManager : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
 
         // 3. TÍNH SAO
-        int starsEarned = 0;
-        if (_maxComboAchieved >= 5) starsEarned = 3;
-        else if (_maxComboAchieved >= 3) starsEarned = 2;
-        else if (_maxComboAchieved >= 1) starsEarned = 1;
+        int starsEarned = comboManager.MaxComboAchieved;
+        if (comboManager.MaxComboAchieved >= 5) starsEarned = 3;
+        else if (comboManager.MaxComboAchieved >= 3) starsEarned = 2;
+        else if (comboManager.MaxComboAchieved >= 1) starsEarned = 1;
 
         // [LOG KIỂM TRA]: In ra console xem game có đang tính đúng sao không
-        Debug.Log($"Max Combo: {_maxComboAchieved} -> Earned: {starsEarned} Stars");
+        Debug.Log($"Max Combo: {comboManager.MaxComboAchieved} -> Earned: {starsEarned} Stars");
 
         yield return new WaitForSeconds(0.2f);
 
@@ -1434,7 +1237,7 @@ public class GameManager : MonoBehaviour
     {
         foreach (var grill in _listGrill)
         {
-            if (grill.gameObject.activeInHierarchy && (grill.IsMerging || grill.IsPreparingTray)) 
+            if (grill.gameObject.activeInHierarchy && (grill.IsMerging || grill.IsPreparingTray))
                 return true; // Có bếp đang bận!
         }
         return false;

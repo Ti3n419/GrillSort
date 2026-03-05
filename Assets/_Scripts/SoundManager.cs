@@ -120,12 +120,12 @@ public class SoundManager : MonoBehaviour
     // ========================================================
     // HÀM GỌI RUNG ĐIỆN THOẠI (HAPTICS)
     // ========================================================
-    public void PlayVibrate()
-    {
-        // Chỉ rung nếu người chơi đang BẬT tính năng Rung trong Setting
-        if (PlayerPrefs.GetInt("VibrateOn", 1) == 1)
-        {
-            Handheld.Vibrate(); // Lệnh rung mặc định của Unity
-        }
-    }
+    // public void PlayVibrate()
+    // {
+    //     // Chỉ rung nếu người chơi đang BẬT tính năng Rung trong Setting
+    //     if (PlayerPrefs.GetInt("VibrateOn", 1) == 1)
+    //     {
+    //         Handheld.Vibrate(); // Lệnh rung mặc định của Unity
+    //     }
+    // }
 }
