@@ -269,7 +269,7 @@ public class GrillStation : MonoBehaviour
     {
         // BƯỚC 1: BẾP ĐÃ KÍN CHỖ CHƯA?
         // Hàm GetSlotNull trả về null nghĩa là không còn ô trống nào -> Bếp đã đầy 3 ô.
-        if (this.GetSlotNull() == null && !IsMerging)// [FIX BẢO HIỂM]: Phải đảm bảo bếp đầy (GetSlotNull == null) VÀ không bị kẹt hiệu ứng (!IsMerging)
+        if (this.GetSlotNull() == null && !IsMerging && ! IsPreparingTray)// [FIX BẢO HIỂM]: Phải đảm bảo bếp đầy (GetSlotNull == null) VÀ không bị kẹt hiệu ứng (!IsMerging)
         {
             // BƯỚC 2: 3 MÓN CÓ GIỐNG HỆT NHAU KHÔNG?
             if (this.CanMerge())
@@ -278,6 +278,13 @@ public class GrillStation : MonoBehaviour
                 string nameOfMergedFood = _totalSlots[0].GetSpriteFood.name;// [FIX LỖI]: Lấy tên của tấm ảnh đang nằm trên ô số 0
                // 1. BẬT KHIÊN: Báo cho hệ thống biết bếp này đang xử lý, cấm chuột chạm vào!
                 IsMerging = true;
+                // [FIX BUG TUYỆT ĐỐI]: Trống rỗng hóa (Tẩy não) 3 ô này ngay lập tức!
+                // Kẻ thù (Shuffle, Kéo Thả) khi gọi slot.HasFood sẽ nhận được kết quả FALSE
+                // nên nó sẽ tưởng đây là ô trống và bỏ qua, không cướp đồ ăn nữa!
+                foreach(var slot in _totalSlots)
+                {
+                    slot.MarkAsMerging(true);
+                }
                 StartCoroutine(IEMerge());
                 
                 // BƯỚC 4: DỌN ĐĨA MỚI LÊN (Vì bếp vừa bị xóa sạch đồ ăn)

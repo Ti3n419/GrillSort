@@ -21,6 +21,7 @@ public class DropDragCtrl : MonoBehaviour
     // VỊ TRÍ ĐÍCH ĐẾN: Ghi nhớ cái ô trống mà con chuột đang trỏ vào để in "bóng mờ" (preview) lên đó.
     private FoodSlot _cacheFood;
 
+
     // CỜ KÉO CHUỘT: Bằng TRUE khi người chơi đang Giữ chuột để di chuyển đồ ăn. Bằng FALSE khi thả ra.
     private bool _hasDrag;
 
@@ -78,7 +79,19 @@ public class DropDragCtrl : MonoBehaviour
 
             // Bắn 1 tia laser từ vị trí chuột đâm xuyên màn hình xem có trúng ô đồ ăn (FoodSlot) nào không
             FoodSlot tapSlot = Utils.GetRayCastUI<FoodSlot>(Input.mousePosition);
-
+            // ========================================================
+            // [THÊM MỚI BỘ LỌC KHIÊN CHẮN TẠI ĐÂY]
+            // Nếu bấm trúng 1 ô, nhưng ô đó thuộc về cái Bếp đang Nổ hoặc Đang kéo khay
+            if (tapSlot != null)
+            {
+                GrillStation targetGrill = tapSlot.GrillStation;
+                if (targetGrill != null && (targetGrill.IsMerging || targetGrill.IsPreparingTray))
+                {
+                    // Ép nó thành Null! Đánh lừa code bên dưới là ta đang bấm ra ngoài đất trống
+                    tapSlot = null;
+                }
+            }
+            // ========================================================
             if (tapSlot != null) // TRÚNG MỘT CÁI Ô (TRÊN VỈ NƯỚNG / ĐĨA)
             {
                 // Kiểm tra xem cái ô vừa click có phải là cái gốc của món đang bay lơ lửng không?
@@ -214,37 +227,51 @@ public class DropDragCtrl : MonoBehaviour
 
             if (slot != null) // Chuột đang lượn lờ trên một cái Bếp / Khay
             {
-                if (!slot.HasFood) // Ô ĐANG TRỐNG
+                // [TỐI ƯU HÓA & FIX BUG BIẾN HÌNH]: 
+                // Lấy thông tin Bếp Cha cực nhanh từ Cache của FoodSlot
+                GrillStation targetGrill = slot.GrillStation;
+                // Nếu chuột lướt qua cái Bếp ĐANG BẬN (Merge hoặc Kéo Khay) 
+                // -> CẤM TUYỆT ĐỐI KHÔNG CHO IN BÓNG MỜ LÊN ĐÂY!
+                if (targetGrill != null && (targetGrill.IsMerging || targetGrill.IsPreparingTray))
                 {
-                    // Tránh gọi lệnh in bóng mờ liên tục gây lag. Chỉ in khi chuột đổi sang ô MỚI
-                    if (_cacheFood == null || _cacheFood.GetInstanceID() != slot.GetInstanceID())
-                    {
-                        _cacheFood?.OnHideFood(); // Lau bóng mờ ở ô cũ
-                        _cacheFood = slot;        // Gán ô đích mới
-                        _cacheFood.OnFadeFood();  // Làm mờ ô đích
-                        _cacheFood.OnSetSlot(_currentFood.GetSpriteFood); // In hình món ăn đang cầm lên đó
-                    }
+                    this.OnClearCacheSlot(); // Xóa bóng mờ cũ (nếu có) rồi chuồn luôn
+                    //return; // Dừng chạy đoạn code bên dưới
                 }
-                else // Ô ĐÃ CÓ ĐỒ ĂN
+                else
                 {
-                    // Nhờ Bếp tổng (GrillStation) tìm giúp xem trong cái bếp này có ô nào trống và GẦN CHUỘT NHẤT không
-                    FoodSlot slotAvailable = slot.GetSlotNull;
-
-                    if (slotAvailable != null) // Tìm thấy chỗ trống
+                    if (!slot.HasFood) // Ô ĐANG TRỐNG
                     {
-                        if (_cacheFood == null || _cacheFood.GetInstanceID() != slotAvailable.GetInstanceID())
+                        // Tránh gọi lệnh in bóng mờ liên tục gây lag. Chỉ in khi chuột đổi sang ô MỚI
+                        if (_cacheFood == null || _cacheFood.GetInstanceID() != slot.GetInstanceID())
                         {
-                            _cacheFood?.OnHideFood();
-                            _cacheFood = slotAvailable;
-                            _cacheFood.OnFadeFood();
-                            _cacheFood.OnSetSlot(_currentFood.GetSpriteFood);
+                            _cacheFood?.OnHideFood(); // Lau bóng mờ ở ô cũ
+                            _cacheFood = slot;        // Gán ô đích mới
+                            _cacheFood.OnFadeFood();  // Làm mờ ô đích
+                            _cacheFood.OnSetSlot(_currentFood.GetSpriteFood); // In hình món ăn đang cầm lên đó
                         }
                     }
-                    else // BẾP ĐÃ KÍN 3 Ô
+                    else // Ô ĐÃ CÓ ĐỒ ĂN
                     {
-                        this.OnClearCacheSlot(); // Không có chỗ in bóng mờ -> Xóa sạch
+                        // Nhờ Bếp tổng (GrillStation) tìm giúp xem trong cái bếp này có ô nào trống và GẦN CHUỘT NHẤT không
+                        FoodSlot slotAvailable = slot.GetSlotNull;
+
+                        if (slotAvailable != null) // Tìm thấy chỗ trống
+                        {
+                            if (_cacheFood == null || _cacheFood.GetInstanceID() != slotAvailable.GetInstanceID())
+                            {
+                                _cacheFood?.OnHideFood();
+                                _cacheFood = slotAvailable;
+                                _cacheFood.OnFadeFood();
+                                _cacheFood.OnSetSlot(_currentFood.GetSpriteFood);
+                            }
+                        }
+                        else // BẾP ĐÃ KÍN 3 Ô
+                        {
+                            this.OnClearCacheSlot(); // Không có chỗ in bóng mờ -> Xóa sạch
+                        }
                     }
                 }
+
             }
             else // CHUỘT BAY RA NGOÀI VÙNG ĐẤT TRỐNG
             {
@@ -303,8 +330,19 @@ public class DropDragCtrl : MonoBehaviour
             {
                 _isAnimating = true;
 
+                // THÊM CHỐT CHẶN Ở ĐÂY: Kiểm tra lần cuối trước khi quyết định thả đồ xuống!
+                bool canDrop = true;
+                if (_cacheFood != null)
+                {
+                    var targetGrill = _cacheFood.GrillStation;// tạo biến tham chiếu tới GrillStation qua FoodSlot
+                    if (targetGrill != null && targetGrill.IsMerging || targetGrill.IsPreparingTray)// Nếu lúc thả tay ra mà bếp đó ĐANG MERGE hoặc ĐANG KÉO KHAY -> Cấm thả!
+                    {
+                        canDrop = false;
+                    }
+                }
+
                 // Nếu chỗ in bóng mờ (Đích đến) KHÁC VỚI chỗ xuất phát -> KÉO THẢ THÀNH CÔNG VÀO Ô MỚI
-                if (_cacheFood != null && _cacheFood.GetInstanceID() != _currentFood.GetInstanceID())
+                if (_cacheFood != null && _cacheFood.GetInstanceID() != _currentFood.GetInstanceID() && canDrop)
                 {
                     // Cho Dummy bay nốt quãng đường vào ô đích
                     _imgFoodDrag.transform.DOMove(_cacheFood.transform.position, 0.2f).OnComplete(() =>

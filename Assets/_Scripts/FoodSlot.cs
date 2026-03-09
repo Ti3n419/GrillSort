@@ -1,9 +1,9 @@
-﻿using DG.Tweening;
+using DG.Tweening;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class FoodSlot : MonoBehaviour
+public class FoodSlot : MonoBehaviour 
 {
     private Image _imgFood; // Hiển thị hình ảnh món ăn
 
@@ -12,6 +12,8 @@ public class FoodSlot : MonoBehaviour
     private Color fade = new Color(1, 1, 1, 0.7f);  // Mờ 70% (Chỉ là bóng preview)
 
     private GrillStation _grillCtrl; // Lưu tham chiếu đến Bếp tổng quản lý nó
+    public GrillStation GrillStation => _grillCtrl;
+    public bool IsBeingMerged { get; private set; } = false;
 
     private void Awake()
     {
@@ -24,7 +26,7 @@ public class FoodSlot : MonoBehaviour
     }
 
     // Đặt món ăn thật vào ô
-    public void OnSetSlot(Sprite spr)
+    public void OnSetSlot(Sprite spr) 
     {
         _imgFood.gameObject.SetActive(true);
         _imgFood.sprite = spr;
@@ -34,14 +36,14 @@ public class FoodSlot : MonoBehaviour
     // Bật/Tắt hiển thị UI của ô này
     public void OnActiveFood(bool active)
     {
-        _imgFood.gameObject.SetActive(active);
+        _imgFood.gameObject.SetActive(active); 
         _imgFood.color = normal;
     }
 
     // Biến ô này thành "Bóng mờ" (Preview lúc kéo chuột qua)
     public void OnFadeFood()
     {
-        this.OnActiveFood(true);
+        this.OnActiveFood(true);// 
         _imgFood.color = fade; // Chuyển màu sang trong suốt 70%
     }
 
@@ -84,27 +86,32 @@ public class FoodSlot : MonoBehaviour
     {
         _grillCtrl?.OnCheckPrepareTray();
     }
-    public void OnFadeOut() 
+    public void OnFadeOut()
     {
         _imgFood.transform.DOLocalMoveY(100f, 0.6f).OnComplete(() =>
         {
             this.OnActiveFood(false);
             _imgFood.transform.localPosition = Vector3.zero;
-
+            IsBeingMerged = false;
+            
         });
-        _imgFood.DOColor(new Color(1, 1, 0, 0), 0.6f);
+        _imgFood.DOColor(new Color(1, 1, 0, 0), 0.6f); // 
+        
     }
-    public void DoShake() 
+    public void DoShake()
     {
         _imgFood.transform.DOShakePosition(0.5f, 10f, 10, 180f);
     }
+    // Hàm gọi để khóa ô lúc đang Fade Out
+    public void MarkAsMerging(bool isMerging)
+    {
+        IsBeingMerged = isMerging;
+    }
     // ------------------------------------------------------------------
     // CÁC HÀM GETTER (CUNG CẤP THÔNG TIN CHO DROPDRAGCTRL GỌI TỚI)
-    // ------------------------------------------------------------------
-
-    // RẤT QUAN TRỌNG: Ô này ĐÃ CÓ ĐỒ ĂN THẬT khi và chỉ khi:
+    // RẤT QUAN TRỌNG: Ô này ĐÃ CÓ ĐỒ ĂN THẬT khi 
     // 1. Ảnh đang được bật VÀ 2. Màu của ảnh là màu thật (normal, không phải bóng mờ fade)
-    public bool HasFood => _imgFood.gameObject.activeInHierarchy && _imgFood.color == normal;
+    public bool HasFood => _imgFood.gameObject.activeInHierarchy && _imgFood.color == normal && !IsBeingMerged;
 
     // Lấy hình ảnh của món ăn đang nằm trong ô này
     public Sprite GetSpriteFood => _imgFood.sprite;

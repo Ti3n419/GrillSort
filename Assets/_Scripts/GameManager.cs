@@ -9,14 +9,14 @@ public class GameManager : MonoBehaviour
 {
     // [THÊM STRUCT NÀY VÀO CUỐI FILE GAMEMANAGER HOẶC BÊN TRONG CLASS GAMEMANAGER ĐỀU ĐƯỢC]
     // Cấu trúc dữ liệu để ghi nhớ vị trí của mục tiêu Nam châm
-    private struct MagnetTarget
+    private struct MagnetTarget 
     {
         public FoodSlot slot;       // Nếu đồ ăn nằm trên vỉ, biến này sẽ có dữ liệu
         public Image trayImage;     // Nếu đồ ăn nằm dưới khay, biến này sẽ có dữ liệu
         public Sprite sprite;       // Hình ảnh của món ăn
     }
     [System.Serializable] // Dòng này giúp hiển thị Struct này ra ngoài bảng Inspector
-    public struct BoosterUI
+    public struct BoosterUI//
     {
         public Button boosterButton; // Kéo Nút bấm vào đây
         public GameObject lockImage; // Kéo ảnh ổ khóa của nút đó vào đây
@@ -70,7 +70,7 @@ public class GameManager : MonoBehaviour
     public bool IsBoosterRunning => _isBoosterRunning;
     // CẤU HÌNH PROGRESS UI (TIẾN ĐỘ LEVEL)
     [Header("Progress Config")]
-    [SerializeField] private TextMeshProUGUI _progressText;
+    [SerializeField] private TextMeshProUGUI _progressText;// biến này dùng để 
     [Header("UI Panels")]
     [SerializeField] private GameObject _settingsPanel; // Kéo Panel Setting của bạn vào đây
     // CẤU HÌNH WIN / LOSE UI
